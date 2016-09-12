@@ -1,26 +1,34 @@
 - hosts: minecraft_aws
   become: yes
   tasks:
+    # Apt update - best practice
     - name: update apt packages
       apt: upgrade=yes update_cache=yes cache_valid_time=3600
 
+    # Minecraft requires at least java 7 to run
     - name: install openjdk-7-jdk
       apt: name=openjdk-7-jdk state=present
 
+    # Screen will be used to kick off minecraft as a background process so Ansible run can complete
     - name: install screen
       apt: name=screen state=present
 
+    # Create new minecraft directory in /opt/minecraft
     - name: create mc directory
       file: path=/opt/minecraft state=directory
 
+    # Get latest minecraft jar, or get some other version of your choice
     - name: download minecraft
       get_url: url={{ "https://s3.amazonaws.com/Minecraft.Download/versions/1.10.2/minecraft_server.1.10.2.jar" }} dest={{ "/opt/minecraft" }}
 
+    # Run minecraft jar, which will fail since EULA text file does not exit - optionally push your own up to server and remove this step
     - name: spawn a eula file with failed mc startup
       command: chdir=/opt/minecraft java -jar minecraft_server.1.10.2.jar
 
+    # Run regex text replace to accept the minecraft EULA
     - replace: dest=/opt/minecraft/eula.txt regexp='false' replace='true' backup=no
 
+    # Run the jar in screen detached mode with higher resource allocation for the JVM to give minecraft more juice
     - command: screen -S "minecraft_server" -d -m sudo java -Xmx1024M -Xms1024M -jar minecraft_server.1.10.2.jar
       args:
         chdir: /opt/minecraft
