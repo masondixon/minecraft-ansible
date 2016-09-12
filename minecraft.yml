@@ -1,0 +1,26 @@
+- hosts: minecraft_aws
+  become: yes
+  tasks:
+    - name: update apt packages
+      apt: upgrade=yes update_cache=yes cache_valid_time=3600
+
+    - name: install openjdk-7-jdk
+      apt: name=openjdk-7-jdk state=present
+
+    - name: install screen
+      apt: name=screen state=present
+
+    - name: create mc directory
+      file: path=/opt/minecraft state=directory
+
+    - name: download minecraft
+      get_url: url={{ "https://s3.amazonaws.com/Minecraft.Download/versions/1.10.2/minecraft_server.1.10.2.jar" }} dest={{ "/opt/minecraft" }}
+
+    - name: spawn a eula file with failed mc startup
+      command: chdir=/opt/minecraft java -jar minecraft_server.1.10.2.jar
+
+    - replace: dest=/opt/minecraft/eula.txt regexp='false' replace='true' backup=no
+
+    - command: screen -S "minecraft_server" -d -m sudo java -Xmx1024M -Xms1024M -jar minecraft_server.1.10.2.jar
+      args:
+        chdir: /opt/minecraft
